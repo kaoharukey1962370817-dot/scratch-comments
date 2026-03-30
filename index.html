@@ -2,10 +2,10 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（完全最終＋時間表示）</title>
+<title>会話タイムマシン（最終完全版）</title>
 
 <style>
-body { font-family: sans-serif; margin-right: 140px; }
+body { font-family: sans-serif; margin-right: 160px; }
 
 .comment {
   padding: 6px;
@@ -22,7 +22,7 @@ body { font-family: sans-serif; margin-right: 140px; }
   position: fixed;
   top: 10px;
   right: 10px;
-  width: 120px;
+  width: 140px;
   background: #fff;
   border: 1px solid #ccc;
   padding: 10px;
@@ -30,7 +30,7 @@ body { font-family: sans-serif; margin-right: 140px; }
 
 .vertical {
   writing-mode: bt-lr;
-  height: 150px;
+  height: 120px;
 }
 
 button {
@@ -42,11 +42,16 @@ button {
   color: gray;
   font-size: 12px;
 }
+
+input {
+  width: 100%;
+  margin-top: 5px;
+}
 </style>
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（完全最終＋時間表示）</h2>
+<h2>⏳ 会話タイムマシン（最終完全版）</h2>
 
 <div id="control">
 
@@ -59,6 +64,12 @@ button {
   <div>位置</div>
   <input type="range" id="seek" min="0" max="100" value="0" class="vertical">
   <div id="seekVal">0%</div>
+
+  <hr>
+
+  <div>開始時間</div>
+  <input type="text" id="startTimeInput" placeholder="2026/3/28 19:44:13">
+  <button onclick="jumpToTime()">時間ジャンプ</button>
 
   <button onclick="start()">▶</button>
   <button onclick="pause()">⏸</button>
@@ -91,7 +102,7 @@ seekEl.oninput = () => {
   document.getElementById("seekVal").innerText = seekEl.value + "%";
 };
 
-// 時間表示関数
+// 「何日前」表示
 function timeAgo(dateString){
   const now = new Date();
   const past = new Date(dateString);
@@ -102,7 +113,6 @@ function timeAgo(dateString){
   if(diff < 86400) return Math.floor(diff/3600) + "時間前";
   if(diff < 2592000) return Math.floor(diff/86400) + "日前";
   if(diff < 31536000) return Math.floor(diff/2592000) + "ヶ月前";
-
   return Math.floor(diff/31536000) + "年前";
 }
 
@@ -151,6 +161,36 @@ function showComment(c){
   if(autoScroll){
     window.scrollTo({ top: document.body.scrollHeight });
   }
+}
+
+// 時間ジャンプ
+function jumpToTime(){
+
+  const input = document.getElementById("startTimeInput").value;
+  const target = new Date(input).getTime();
+
+  if(isNaN(target)){
+    alert("時間の形式が違う");
+    return;
+  }
+
+  let closestIndex = 0;
+
+  for(let i = 0; i < data.length; i++){
+    let t = new Date(data[i].datetime_created).getTime();
+
+    if(t >= target){
+      closestIndex = i;
+      break;
+    }
+  }
+
+  const percent = Math.floor((closestIndex / data.length) * 100);
+  seekEl.value = percent;
+  document.getElementById("seekVal").innerText = percent + "%";
+
+  // 即再生したいなら↓
+  start();
 }
 
 // 再生（完全同期）
