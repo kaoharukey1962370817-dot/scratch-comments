@@ -29,7 +29,7 @@ body { font-family: sans-serif; margin-right: 160px; }
 }
 
 .vertical {
-  writing-mode: bt-lr;
+  writing-mode: vertical-rl;
   height: 120px;
 }
 
@@ -48,7 +48,6 @@ input {
   margin-top: 5px;
 }
 
-/* デバッグ表示 */
 #debug {
   position: fixed;
   bottom: 0;
@@ -69,31 +68,30 @@ input {
 
 <div id="control">
 
-  <div>速度</div>
-  <input type="range" id="speed" min="1" max="10000" value="100" class="vertical">
-  <div id="speedVal">100x</div>
+<div>速度</div>
+<input type="range" id="speed" min="1" max="10000" value="100" class="vertical">
+<div id="speedVal">100x</div>
 
-  <hr>
+<hr>
 
-  <div>位置</div>
-  <input type="range" id="seek" min="0" max="100" value="0" class="vertical">
-  <div id="seekVal">0%</div>
+<div>位置</div>
+<input type="range" id="seek" min="0" max="100" value="0" class="vertical">
+<div id="seekVal">0%</div>
 
-  <hr>
+<hr>
 
-  <div>開始時間</div>
-  <input type="text" id="startTimeInput" placeholder="2026/3/28 19:44:13">
-  <button onclick="jumpToTime()">時間ジャンプ</button>
+<div>開始時間</div>
+<input type="text" id="startTimeInput" placeholder="2026/3/28 19:44:13">
+<button onclick="jumpToTime()">時間ジャンプ</button>
 
-  <button onclick="start()">▶</button>
-  <button onclick="pause()">⏸</button>
-  <button onclick="scrollBottom()">↓</button>
+<button onclick="start()">▶</button>
+<button onclick="pause()">⏸</button>
+<button onclick="scrollBottom()">↓</button>
 
 </div>
 
 <div id="list"></div>
 
-<!-- 🔥 デバッグ表示 -->
 <pre id="debug"></pre>
 
 <script>
@@ -110,14 +108,13 @@ const list = document.getElementById("list");
 const speedEl = document.getElementById("speed");
 const seekEl = document.getElementById("seek");
 
-// デバッグログ
 function log(msg){
+  console.log(msg);
   const d = document.getElementById("debug");
-  d.textContent += msg + "\\n";
+  d.textContent += msg + "\n";
   d.scrollTop = d.scrollHeight;
 }
 
-// 表示更新
 speedEl.oninput = () => {
   document.getElementById("speedVal").innerText = speedEl.value + "x";
 };
@@ -126,7 +123,6 @@ seekEl.oninput = () => {
   document.getElementById("seekVal").innerText = seekEl.value + "%";
 };
 
-// 「何日前」
 function timeAgo(dateString){
   const now = new Date();
   const past = new Date(dateString);
@@ -140,7 +136,6 @@ function timeAgo(dateString){
   return Math.floor(diff/31536000) + "年前";
 }
 
-// 読み込み
 async function loadData(){
   log("データ読み込み中...");
   const res = await fetch("comments.json");
@@ -151,16 +146,13 @@ async function loadData(){
   log("読み込み完了: " + data.length + "件");
 }
 
-// スクロール制御
 let autoScroll = true;
 window.addEventListener("scroll", () => {
   autoScroll = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
 });
 
-// 返信ツリー
 const commentMap = {};
 
-// 表示
 function showComment(c){
   const div = document.createElement("div");
   div.className = "comment";
@@ -172,10 +164,10 @@ function showComment(c){
   const exact = new Date(c.datetime_created).toLocaleString();
 
   div.innerHTML = `
-    <b>${c.author.username}</b>
-    <div class="time">${timeAgo(c.datetime_created)} / ${exact}</div>
-    <div>${c.content}</div>
-  `;
+<b>${c.author.username}</b>
+<div class="time">${timeAgo(c.datetime_created)} / ${exact}</div>
+<div>${c.content}</div>
+`;
 
   commentMap[c.id] = div;
 
@@ -190,7 +182,6 @@ function showComment(c){
   }
 }
 
-// 🚀 時間ジャンプ（デバッグ付き）
 async function jumpToTime(){
 
   if(data.length === 0){
@@ -246,7 +237,6 @@ async function jumpToTime(){
   }, 50);
 }
 
-// 再生
 async function start(){
 
   if(running) return;
@@ -298,7 +288,6 @@ async function start(){
   loop();
 }
 
-// 一時停止
 function pause(){
   paused = !paused;
 
@@ -307,7 +296,6 @@ function pause(){
   }
 }
 
-// 最新へ
 function scrollBottom(){
   window.scrollTo({ top: document.body.scrollHeight });
   autoScroll = true;
