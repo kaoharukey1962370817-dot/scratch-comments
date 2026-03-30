@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（完全最終＋返信対応）</title>
+<title>会話タイムマシン（完全最終＋時間表示）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 140px; }
@@ -37,22 +37,25 @@ button {
   width: 100%;
   margin-top: 5px;
 }
+
+.time {
+  color: gray;
+  font-size: 12px;
+}
 </style>
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（完全最終＋返信対応）</h2>
+<h2>⏳ 会話タイムマシン（完全最終＋時間表示）</h2>
 
 <div id="control">
 
-  <!-- 速度 -->
   <div>速度</div>
   <input type="range" id="speed" min="1" max="10000" value="100" class="vertical">
   <div id="speedVal">100x</div>
 
   <hr>
 
-  <!-- 時間バー -->
   <div>位置</div>
   <input type="range" id="seek" min="0" max="100" value="0" class="vertical">
   <div id="seekVal">0%</div>
@@ -70,13 +73,16 @@ button {
 let data = [];
 let running = false;
 let paused = false;
-let currentIndex = 0;
+
+let startTime = 0;
+let baseTime = 0;
+let index = 0;
 
 const list = document.getElementById("list");
 const speedEl = document.getElementById("speed");
 const seekEl = document.getElementById("seek");
 
-// --- 表示 ---
+// 表示更新
 speedEl.oninput = () => {
   document.getElementById("speedVal").innerText = speedEl.value + "x";
 };
@@ -85,7 +91,22 @@ seekEl.oninput = () => {
   document.getElementById("seekVal").innerText = seekEl.value + "%";
 };
 
-// --- 読み込み ---
+// 時間表示関数
+function timeAgo(dateString){
+  const now = new Date();
+  const past = new Date(dateString);
+  const diff = (now - past) / 1000;
+
+  if(diff < 60) return Math.floor(diff) + "秒前";
+  if(diff < 3600) return Math.floor(diff/60) + "分前";
+  if(diff < 86400) return Math.floor(diff/3600) + "時間前";
+  if(diff < 2592000) return Math.floor(diff/86400) + "日前";
+  if(diff < 31536000) return Math.floor(diff/2592000) + "ヶ月前";
+
+  return Math.floor(diff/31536000) + "年前";
+}
+
+// データ読み込み
 async function loadData(){
   const res = await fetch("comments.json");
   data = await res.json();
@@ -93,19 +114,17 @@ async function loadData(){
   data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
 }
 
-// --- スクロール制御 ---
+// スクロール制御
 let autoScroll = true;
-
 window.addEventListener("scroll", () => {
   autoScroll = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
 });
 
-// --- 返信ツリー用 ---
+// 返信ツリー
 const commentMap = {};
 
-// --- コメント表示（返信対応＋安定描画） ---
-async function showComment(c){
-
+// コメント表示
+function showComment(c){
   const div = document.createElement("div");
   div.className = "comment";
 
@@ -113,52 +132,31 @@ async function showComment(c){
     div.classList.add("reply");
   }
 
+  const exact = new Date(c.datetime_created).toLocaleString();
+
   div.innerHTML = `
-    <b>${c.author.username}</b><br>
-    ${c.content}
+    <b>${c.author.username}</b>
+    <div class="time">${timeAgo(c.datetime_created)} / ${exact}</div>
+    <div>${c.content}</div>
   `;
 
   commentMap[c.id] = div;
 
-  // 親の下に入れる
   if(c.parent_id && commentMap[c.parent_id]){
     commentMap[c.parent_id].appendChild(div);
   } else {
     list.appendChild(div);
   }
 
-  // 描画待ち
-  await new Promise(requestAnimationFrame);
-
-  if (autoScroll) {
+  if(autoScroll){
     window.scrollTo({ top: document.body.scrollHeight });
   }
 }
 
-// --- スマート待機（速度リアル反映） ---
-async function smartWait(diff){
-
-  let passed = 0;
-
-  while(passed < diff){
-
-    let speed = speedEl.value;
-
-    let step = 0.05; // 細かく分割
-    let wait = step / speed;
-
-    if(wait < 0.002) wait = 0.002;
-
-    await new Promise(r => setTimeout(r, wait * 1000));
-
-    passed += step;
-  }
-}
-
-// --- 再生 ---
+// 再生（完全同期）
 async function start(){
-  if(running) return;
 
+  if(running) return;
   running = true;
   paused = false;
 
@@ -166,44 +164,57 @@ async function start(){
     await loadData();
   }
 
-  currentIndex = Math.floor((seekEl.value / 100) * data.length);
-
   list.innerHTML = "";
   Object.keys(commentMap).forEach(k => delete commentMap[k]);
 
-  for(let i = currentIndex; i < data.length; i++){
+  const seekIndex = Math.floor((seekEl.value / 100) * data.length);
+  baseTime = new Date(data[seekIndex].datetime_created).getTime();
 
-    while(paused){
-      await new Promise(r => setTimeout(r, 100));
+  startTime = Date.now();
+  index = seekIndex;
+
+  function loop(){
+
+    if(!running) return;
+
+    if(paused){
+      requestAnimationFrame(loop);
+      return;
     }
 
-    await showComment(data[i]);
+    let speed = speedEl.value;
+    let elapsed = (Date.now() - startTime) * speed;
 
-    // シーク更新
-    currentIndex = i;
-    seekEl.value = Math.floor((i / data.length) * 100);
-    document.getElementById("seekVal").innerText = seekEl.value + "%";
+    while(index < data.length){
 
-    if(i < data.length - 1){
+      let t = new Date(data[index].datetime_created).getTime();
+      let rel = t - baseTime;
 
-      let t1 = new Date(data[i].datetime_created);
-      let t2 = new Date(data[i+1].datetime_created);
+      if(rel > elapsed) break;
 
-      let diff = (t2 - t1) / 1000;
+      showComment(data[index]);
+      index++;
 
-      await smartWait(diff);
+      seekEl.value = Math.floor((index / data.length) * 100);
+      document.getElementById("seekVal").innerText = seekEl.value + "%";
     }
+
+    requestAnimationFrame(loop);
   }
 
-  running = false;
+  loop();
 }
 
-// --- 一時停止 ---
+// 一時停止
 function pause(){
   paused = !paused;
+
+  if(!paused){
+    startTime = Date.now() - (new Date(data[index]?.datetime_created).getTime() - baseTime) / speedEl.value;
+  }
 }
 
-// --- 最新へ ---
+// 最新へ
 function scrollBottom(){
   window.scrollTo({ top: document.body.scrollHeight });
   autoScroll = true;
