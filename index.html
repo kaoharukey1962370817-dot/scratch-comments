@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（最終安定版）</title>
+<title>会話タイムマシン（デバッグ最終版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -22,7 +22,7 @@ body { font-family: sans-serif; margin-right: 160px; }
   position: fixed;
   top: 10px;
   right: 10px;
-  width: 140px;
+  width: 150px;
   background: #fff;
   border: 1px solid #ccc;
   padding: 10px;
@@ -51,7 +51,7 @@ input {
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（最終安定版）</h2>
+<h2>⏳ 会話タイムマシン（デバッグ最終版）</h2>
 
 <div id="control">
 
@@ -163,17 +163,11 @@ function showComment(c){
   }
 }
 
-// 🚀 修正版：時間ジャンプ（完全対応）
+// 🚀 完全修正版：時間ジャンプ（未来優先＋前後比較＋デバッグ）
 async function jumpToTime(){
 
-  // 👇 データ未読み込み対策（超重要）
   if(data.length === 0){
     await loadData();
-  }
-
-  if(data.length === 0){
-    alert("データ読み込み失敗");
-    return;
   }
 
   const input = document.getElementById("startTimeInput").value;
@@ -184,24 +178,40 @@ async function jumpToTime(){
     return;
   }
 
-  let closestIndex = 0;
-  let bestDiff = Infinity;
+  console.log("=== ジャンプ開始 ===");
+  console.log("入力時間:", new Date(target));
+
+  let closestIndex = data.length - 1;
 
   for(let i = 0; i < data.length; i++){
     let t = new Date(data[i].datetime_created).getTime();
-    let diff = Math.abs(t - target);
 
-    if(diff < bestDiff){
-      bestDiff = diff;
-      closestIndex = i;
+    if(t >= target){
+
+      if(i > 0){
+        let prev = new Date(data[i-1].datetime_created).getTime();
+
+        console.log("候補:", new Date(prev), new Date(t));
+
+        if(Math.abs(prev - target) < Math.abs(t - target)){
+          closestIndex = i - 1;
+        } else {
+          closestIndex = i;
+        }
+      } else {
+        closestIndex = i;
+      }
+
+      break;
     }
   }
+
+  console.log("選ばれた:", new Date(data[closestIndex].datetime_created));
 
   const percent = Math.floor((closestIndex / data.length) * 100);
   seekEl.value = percent;
   document.getElementById("seekVal").innerText = percent + "%";
 
-  // 強制再起動
   running = false;
 
   setTimeout(() => {
