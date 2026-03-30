@@ -2,12 +2,13 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>タイムマシン</title>
+<title>会話タイムマシン</title>
 
 <style>
 body { font-family: sans-serif; }
 .comment { padding: 6px; border-bottom: 1px solid #ccc; }
 .reply { margin-left: 20px; background: #f5f5f5; }
+button { margin: 5px; }
 </style>
 </head>
 <body>
@@ -16,16 +17,29 @@ body { font-family: sans-serif; }
 
 速度: <input type="range" id="speed" min="1" max="100" value="10">
 <span id="speedVal">10</span>倍
+
 <br><br>
 
 <button onclick="start()">▶ 再生</button>
+<button onclick="pause()">⏸ 一時停止</button>
+<button onclick="scrollBottom()">↓ 最新へ</button>
 
 <div id="list"></div>
 
 <script>
 
 let data = [];
+let running = false;
+let paused = false;
 
+const list = document.getElementById("list");
+
+// --- 速度表示 ---
+document.getElementById("speed").oninput = function(){
+  document.getElementById("speedVal").innerText = this.value;
+};
+
+// --- JSON読み込み ---
 async function loadData(){
   const res = await fetch("comments.json");
   data = await res.json();
@@ -33,12 +47,12 @@ async function loadData(){
   data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
 }
 
-let running = false;
+// --- 下にいるか判定 ---
+function isAtBottom() {
+  return window.innerHeight + window.scrollY >= document.body.offsetHeight - 50;
+}
 
-document.getElementById("speed").oninput = function(){
-  document.getElementById("speedVal").innerText = this.value;
-};
-
+// --- 表示 ---
 function showComment(c){
   const div = document.createElement("div");
   div.className = "comment";
@@ -53,16 +67,29 @@ function showComment(c){
   `;
 
   list.appendChild(div);
-  window.scrollTo(0, document.body.scrollHeight);
+
+  // 👇 下にいる時だけスクロール
+  if (isAtBottom()) {
+    window.scrollTo(0, document.body.scrollHeight);
+  }
 }
 
+// --- 再生 ---
 async function start(){
   if(running) return;
+
   running = true;
+  paused = false;
 
   await loadData();
 
   for(let i=0;i<data.length;i++){
+
+    // 一時停止対応
+    while(paused){
+      await new Promise(r => setTimeout(r, 200));
+    }
+
     showComment(data[i]);
 
     if(i < data.length - 1){
@@ -80,6 +107,16 @@ async function start(){
   }
 
   running = false;
+}
+
+// --- 一時停止 ---
+function pause(){
+  paused = !paused;
+}
+
+// --- 最新へ ---
+function scrollBottom(){
+  window.scrollTo(0, document.body.scrollHeight);
 }
 
 </script>
