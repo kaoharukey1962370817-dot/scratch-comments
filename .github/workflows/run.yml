@@ -1,0 +1,28 @@
+name: Fetch Comments
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: "3.x"
+
+    - run: pip install requests
+
+    - run: python script.py
+
+    - run: |
+        git config user.name "bot"
+        git config user.email "bot@example.com"
+        git add comments.json
+        git commit -m "update" || echo "no change"
+        git push
