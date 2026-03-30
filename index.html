@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>タイムマシン</title>
+
+<style>
+body { font-family: sans-serif; }
+.comment { padding: 6px; border-bottom: 1px solid #ccc; }
+.reply { margin-left: 20px; background: #f5f5f5; }
+</style>
+</head>
+<body>
+
+<h2>⏳ 会話タイムマシン</h2>
+
+速度: <input type="range" id="speed" min="1" max="100" value="10">
+<span id="speedVal">10</span>倍
+<br><br>
+
+<button onclick="start()">▶ 再生</button>
+
+<div id="list"></div>
+
+<script>
+
+let data = [];
+
+async function loadData(){
+  const res = await fetch("comments.json");
+  data = await res.json();
+
+  data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
+}
+
+let running = false;
+
+document.getElementById("speed").oninput = function(){
+  document.getElementById("speedVal").innerText = this.value;
+};
+
+function showComment(c){
+  const div = document.createElement("div");
+  div.className = "comment";
+
+  if(c.is_reply){
+    div.classList.add("reply");
+  }
+
+  div.innerHTML = `
+    <b>${c.author.username}</b><br>
+    ${c.content}
+  `;
+
+  list.appendChild(div);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+async function start(){
+  if(running) return;
+  running = true;
+
+  await loadData();
+
+  for(let i=0;i<data.length;i++){
+    showComment(data[i]);
+
+    if(i < data.length - 1){
+      let t1 = new Date(data[i].datetime_created);
+      let t2 = new Date(data[i+1].datetime_created);
+
+      let diff = (t2 - t1) / 1000;
+      let speed = document.getElementById("speed").value;
+
+      let wait = diff / speed;
+      if(wait > 5) wait = 5;
+
+      await new Promise(r => setTimeout(r, wait * 1000));
+    }
+  }
+
+  running = false;
+}
+
+</script>
+
+</body>
+</html>
