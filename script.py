@@ -8,12 +8,22 @@ def fetch_comments(offset):
     url = f"https://api.scratch.mit.edu/studios/{studio_id}/comments"
     params = {"limit": 40, "offset": offset}
     headers = {"User-Agent": "Mozilla/5.0"}
-    res = requests.get(url, params=params, headers=headers)
 
-    if res.status_code != 200:
-        print("エラー:", res.status_code)
-        return []
-    return res.json()
+    for attempt in range(5):  # 👈 リトライ最大5回
+        res = requests.get(url, params=params, headers=headers)
+
+        if res.status_code == 200:
+            return res.json()
+
+        elif res.status_code == 429:
+            print("⚠️ 429 制限 → 待機")
+            time.sleep(5)
+
+        else:
+            print("エラー:", res.status_code)
+            time.sleep(2)
+
+    return []
 
 all_comments = []
 offset = 0
@@ -30,8 +40,8 @@ while True:
 
     print("取得:", offset)
 
-    # 👇 最小待機（超重要）
-    time.sleep(0.1)
+    # 👇 少し余裕持たせる（成功率UP）
+    time.sleep(0.2)
 
 print("保存中...")
 
