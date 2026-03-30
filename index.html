@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（完全最終版）</title>
+<title>会話タイムマシン（完全最終＋返信対応）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 140px; }
@@ -41,7 +41,7 @@ button {
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（完全最終版）</h2>
+<h2>⏳ 会話タイムマシン（完全最終＋返信対応）</h2>
 
 <div id="control">
 
@@ -100,12 +100,16 @@ window.addEventListener("scroll", () => {
   autoScroll = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
 });
 
-// --- コメント表示（超重要修正版） ---
+// --- 返信ツリー用 ---
+const commentMap = {};
+
+// --- コメント表示（返信対応＋安定描画） ---
 async function showComment(c){
+
   const div = document.createElement("div");
   div.className = "comment";
 
-  if(c.is_reply){
+  if(c.parent_id){
     div.classList.add("reply");
   }
 
@@ -114,15 +118,40 @@ async function showComment(c){
     ${c.content}
   `;
 
-  list.appendChild(div);
+  commentMap[c.id] = div;
 
-  // 👇 描画待ち（超重要）
+  // 親の下に入れる
+  if(c.parent_id && commentMap[c.parent_id]){
+    commentMap[c.parent_id].appendChild(div);
+  } else {
+    list.appendChild(div);
+  }
+
+  // 描画待ち
   await new Promise(requestAnimationFrame);
 
   if (autoScroll) {
-    window.scrollTo({
-      top: document.body.scrollHeight
-    });
+    window.scrollTo({ top: document.body.scrollHeight });
+  }
+}
+
+// --- スマート待機（速度リアル反映） ---
+async function smartWait(diff){
+
+  let passed = 0;
+
+  while(passed < diff){
+
+    let speed = speedEl.value;
+
+    let step = 0.05; // 細かく分割
+    let wait = step / speed;
+
+    if(wait < 0.002) wait = 0.002;
+
+    await new Promise(r => setTimeout(r, wait * 1000));
+
+    passed += step;
   }
 }
 
@@ -137,10 +166,10 @@ async function start(){
     await loadData();
   }
 
-  // シーク位置から
   currentIndex = Math.floor((seekEl.value / 100) * data.length);
 
   list.innerHTML = "";
+  Object.keys(commentMap).forEach(k => delete commentMap[k]);
 
   for(let i = currentIndex; i < data.length; i++){
 
@@ -161,14 +190,8 @@ async function start(){
       let t2 = new Date(data[i+1].datetime_created);
 
       let diff = (t2 - t1) / 1000;
-      let speed = speedEl.value;
 
-      let wait = diff / speed;
-
-      // 最小待機
-      if(wait < 0.02) wait = 0.02;
-
-      await new Promise(r => setTimeout(r, wait * 1000));
+      await smartWait(diff);
     }
   }
 
