@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（最終完全版）</title>
+<title>会話タイムマシン（真・最終版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -51,7 +51,7 @@ input {
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（最終完全版）</h2>
+<h2>⏳ 会話タイムマシン（真・最終版）</h2>
 
 <div id="control">
 
@@ -102,7 +102,7 @@ seekEl.oninput = () => {
   document.getElementById("seekVal").innerText = seekEl.value + "%";
 };
 
-// 「何日前」表示
+// 「何日前」
 function timeAgo(dateString){
   const now = new Date();
   const past = new Date(dateString);
@@ -116,7 +116,7 @@ function timeAgo(dateString){
   return Math.floor(diff/31536000) + "年前";
 }
 
-// データ読み込み
+// 読み込み
 async function loadData(){
   const res = await fetch("comments.json");
   data = await res.json();
@@ -133,7 +133,7 @@ window.addEventListener("scroll", () => {
 // 返信ツリー
 const commentMap = {};
 
-// コメント表示
+// 表示
 function showComment(c){
   const div = document.createElement("div");
   div.className = "comment";
@@ -163,7 +163,7 @@ function showComment(c){
   }
 }
 
-// 時間ジャンプ
+// 🚀 修正版：時間ジャンプ
 function jumpToTime(){
 
   const input = document.getElementById("startTimeInput").value;
@@ -175,13 +175,15 @@ function jumpToTime(){
   }
 
   let closestIndex = 0;
+  let bestDiff = Infinity;
 
   for(let i = 0; i < data.length; i++){
     let t = new Date(data[i].datetime_created).getTime();
+    let diff = Math.abs(t - target);
 
-    if(t >= target){
+    if(diff < bestDiff){
+      bestDiff = diff;
       closestIndex = i;
-      break;
     }
   }
 
@@ -189,8 +191,12 @@ function jumpToTime(){
   seekEl.value = percent;
   document.getElementById("seekVal").innerText = percent + "%";
 
-  // 即再生したいなら↓
-  start();
+  // 👇 強制再起動
+  running = false;
+
+  setTimeout(() => {
+    start();
+  }, 50);
 }
 
 // 再生（完全同期）
