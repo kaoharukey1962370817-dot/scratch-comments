@@ -2,10 +2,10 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（強化版）</title>
+<title>会話タイムマシン（完全最終版）</title>
 
 <style>
-body { font-family: sans-serif; margin-right: 120px; }
+body { font-family: sans-serif; margin-right: 140px; }
 
 .comment {
   padding: 6px;
@@ -18,15 +18,19 @@ body { font-family: sans-serif; margin-right: 120px; }
   border-left: 3px solid #999;
 }
 
-/* 右固定UI */
 #control {
   position: fixed;
   top: 10px;
   right: 10px;
-  width: 100px;
+  width: 120px;
   background: #fff;
   border: 1px solid #ccc;
   padding: 10px;
+}
+
+.vertical {
+  writing-mode: bt-lr;
+  height: 150px;
 }
 
 button {
@@ -37,16 +41,26 @@ button {
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（強化版）</h2>
+<h2>⏳ 会話タイムマシン（完全最終版）</h2>
 
 <div id="control">
+
+  <!-- 速度 -->
   <div>速度</div>
-  <input type="range" id="speed" min="1" max="10000" value="100" style="writing-mode: bt-lr; height:150px;">
+  <input type="range" id="speed" min="1" max="10000" value="100" class="vertical">
   <div id="speedVal">100x</div>
+
+  <hr>
+
+  <!-- 時間バー -->
+  <div>位置</div>
+  <input type="range" id="seek" min="0" max="100" value="0" class="vertical">
+  <div id="seekVal">0%</div>
 
   <button onclick="start()">▶</button>
   <button onclick="pause()">⏸</button>
   <button onclick="scrollBottom()">↓</button>
+
 </div>
 
 <div id="list"></div>
@@ -56,16 +70,22 @@ button {
 let data = [];
 let running = false;
 let paused = false;
+let currentIndex = 0;
 
 const list = document.getElementById("list");
 const speedEl = document.getElementById("speed");
+const seekEl = document.getElementById("seek");
 
-// --- 速度表示（リアルタイム） ---
-speedEl.oninput = function(){
-  document.getElementById("speedVal").innerText = this.value + "x";
+// --- 表示 ---
+speedEl.oninput = () => {
+  document.getElementById("speedVal").innerText = speedEl.value + "x";
 };
 
-// --- JSON読み込み ---
+seekEl.oninput = () => {
+  document.getElementById("seekVal").innerText = seekEl.value + "%";
+};
+
+// --- 読み込み ---
 async function loadData(){
   const res = await fetch("comments.json");
   data = await res.json();
@@ -73,16 +93,15 @@ async function loadData(){
   data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
 }
 
-// --- 自動スクロール判定（改善版） ---
+// --- スクロール制御 ---
 let autoScroll = true;
 
 window.addEventListener("scroll", () => {
-  const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
-  autoScroll = nearBottom;
+  autoScroll = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
 });
 
-// --- コメント表示 ---
-function showComment(c){
+// --- コメント表示（超重要修正版） ---
+async function showComment(c){
   const div = document.createElement("div");
   div.className = "comment";
 
@@ -97,11 +116,12 @@ function showComment(c){
 
   list.appendChild(div);
 
-  // 改善スクロール
+  // 👇 描画待ち（超重要）
+  await new Promise(requestAnimationFrame);
+
   if (autoScroll) {
     window.scrollTo({
-      top: document.body.scrollHeight,
-      behavior: "smooth"
+      top: document.body.scrollHeight
     });
   }
 }
@@ -113,15 +133,27 @@ async function start(){
   running = true;
   paused = false;
 
-  await loadData();
+  if(data.length === 0){
+    await loadData();
+  }
 
-  for(let i=0;i<data.length;i++){
+  // シーク位置から
+  currentIndex = Math.floor((seekEl.value / 100) * data.length);
+
+  list.innerHTML = "";
+
+  for(let i = currentIndex; i < data.length; i++){
 
     while(paused){
       await new Promise(r => setTimeout(r, 100));
     }
 
-    showComment(data[i]);
+    await showComment(data[i]);
+
+    // シーク更新
+    currentIndex = i;
+    seekEl.value = Math.floor((i / data.length) * 100);
+    document.getElementById("seekVal").innerText = seekEl.value + "%";
 
     if(i < data.length - 1){
 
@@ -129,13 +161,12 @@ async function start(){
       let t2 = new Date(data[i+1].datetime_created);
 
       let diff = (t2 - t1) / 1000;
-
-      // 👇 毎回取得（リアル変更対応）
       let speed = speedEl.value;
 
       let wait = diff / speed;
 
-      if(wait < 0.01) wait = 0.01;
+      // 最小待機
+      if(wait < 0.02) wait = 0.02;
 
       await new Promise(r => setTimeout(r, wait * 1000));
     }
@@ -151,7 +182,7 @@ function pause(){
 
 // --- 最新へ ---
 function scrollBottom(){
-  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  window.scrollTo({ top: document.body.scrollHeight });
   autoScroll = true;
 }
 
