@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン</title>
+<title>会話タイムマシン（完全版）</title>
 
 <style>
 body { font-family: sans-serif; }
@@ -13,10 +13,11 @@ button { margin: 5px; }
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン</h2>
+<h2>⏳ 会話タイムマシン（完全版）</h2>
 
-速度: <input type="range" id="speed" min="1" max="100" value="10">
-<span id="speedVal">10</span>倍
+速度:
+<input type="range" id="speed" min="1" max="10000" value="100">
+<span id="speedVal">100</span>倍
 
 <br><br>
 
@@ -52,7 +53,7 @@ function isAtBottom() {
   return window.innerHeight + window.scrollY >= document.body.offsetHeight - 50;
 }
 
-// --- 表示 ---
+// --- コメント表示 ---
 function showComment(c){
   const div = document.createElement("div");
   div.className = "comment";
@@ -68,7 +69,7 @@ function showComment(c){
 
   list.appendChild(div);
 
-  // 👇 下にいる時だけスクロール
+  // 下にいる時だけスクロール
   if (isAtBottom()) {
     window.scrollTo(0, document.body.scrollHeight);
   }
@@ -93,6 +94,7 @@ async function start(){
     showComment(data[i]);
 
     if(i < data.length - 1){
+
       let t1 = new Date(data[i].datetime_created);
       let t2 = new Date(data[i+1].datetime_created);
 
@@ -100,7 +102,9 @@ async function start(){
       let speed = document.getElementById("speed").value;
 
       let wait = diff / speed;
-      if(wait > 5) wait = 5;
+
+      // 最小待機だけ制限（重要）
+      if(wait < 0.01) wait = 0.01;
 
       await new Promise(r => setTimeout(r, wait * 1000));
     }
