@@ -1,42 +1,41 @@
 import requests
 import json
 import time
-import os
 
 studio_id = "51471940"
-STEP = 400
-FILE = "comments.json"
-
-if os.path.exists(FILE):
-    with open(FILE, "r", encoding="utf-8") as f:
-        all_comments = json.load(f)
-else:
-    all_comments = []
-
-offset = len(all_comments)
 
 def fetch_comments(offset):
     url = f"https://api.scratch.mit.edu/studios/{studio_id}/comments"
     params = {"limit": 40, "offset": offset}
     headers = {"User-Agent": "Mozilla/5.0"}
-    return requests.get(url, params=params, headers=headers).json()
+    res = requests.get(url, params=params, headers=headers)
 
-print("開始:", offset)
+    if res.status_code != 200:
+        print("エラー:", res.status_code)
+        return []
+    return res.json()
 
-new_comments = []
+all_comments = []
+offset = 0
 
-for i in range(STEP // 40):
+print("🚀 一発取得開始")
+
+while True:
     data = fetch_comments(offset)
     if not data:
         break
 
-    new_comments.extend(data)
+    all_comments.extend(data)
     offset += 40
-    time.sleep(0.3)
 
-all_comments.extend(new_comments)
+    print("取得:", offset)
 
-with open(FILE, "w", encoding="utf-8") as f:
+    # 👇 最小待機（超重要）
+    time.sleep(0.1)
+
+print("保存中...")
+
+with open("comments.json", "w", encoding="utf-8") as f:
     json.dump(all_comments, f, ensure_ascii=False)
 
-print("完了:", len(all_comments))
+print("✅ 完了:", len(all_comments))
