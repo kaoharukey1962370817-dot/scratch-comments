@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（デバッグ最終版）</title>
+<title>会話タイムマシン（スマホデバッグ版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -47,11 +47,25 @@ input {
   width: 100%;
   margin-top: 5px;
 }
+
+/* デバッグ表示 */
+#debug {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 150px;
+  background: #000;
+  color: #0f0;
+  font-size: 12px;
+  overflow: auto;
+  padding: 5px;
+}
 </style>
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（デバッグ最終版）</h2>
+<h2>⏳ 会話タイムマシン（スマホデバッグ版）</h2>
 
 <div id="control">
 
@@ -79,6 +93,9 @@ input {
 
 <div id="list"></div>
 
+<!-- 🔥 デバッグ表示 -->
+<pre id="debug"></pre>
+
 <script>
 
 let data = [];
@@ -92,6 +109,13 @@ let index = 0;
 const list = document.getElementById("list");
 const speedEl = document.getElementById("speed");
 const seekEl = document.getElementById("seek");
+
+// デバッグログ
+function log(msg){
+  const d = document.getElementById("debug");
+  d.textContent += msg + "\\n";
+  d.scrollTop = d.scrollHeight;
+}
 
 // 表示更新
 speedEl.oninput = () => {
@@ -118,10 +142,13 @@ function timeAgo(dateString){
 
 // 読み込み
 async function loadData(){
+  log("データ読み込み中...");
   const res = await fetch("comments.json");
   data = await res.json();
 
   data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
+
+  log("読み込み完了: " + data.length + "件");
 }
 
 // スクロール制御
@@ -163,7 +190,7 @@ function showComment(c){
   }
 }
 
-// 🚀 完全修正版：時間ジャンプ（未来優先＋前後比較＋デバッグ）
+// 🚀 時間ジャンプ（デバッグ付き）
 async function jumpToTime(){
 
   if(data.length === 0){
@@ -178,8 +205,8 @@ async function jumpToTime(){
     return;
   }
 
-  console.log("=== ジャンプ開始 ===");
-  console.log("入力時間:", new Date(target));
+  log("=== ジャンプ開始 ===");
+  log("入力時間: " + new Date(target));
 
   let closestIndex = data.length - 1;
 
@@ -191,7 +218,7 @@ async function jumpToTime(){
       if(i > 0){
         let prev = new Date(data[i-1].datetime_created).getTime();
 
-        console.log("候補:", new Date(prev), new Date(t));
+        log("候補: " + new Date(prev) + " / " + new Date(t));
 
         if(Math.abs(prev - target) < Math.abs(t - target)){
           closestIndex = i - 1;
@@ -206,7 +233,7 @@ async function jumpToTime(){
     }
   }
 
-  console.log("選ばれた:", new Date(data[closestIndex].datetime_created));
+  log("選ばれた: " + new Date(data[closestIndex].datetime_created));
 
   const percent = Math.floor((closestIndex / data.length) * 100);
   seekEl.value = percent;
@@ -219,7 +246,7 @@ async function jumpToTime(){
   }, 50);
 }
 
-// 再生（完全同期）
+// 再生
 async function start(){
 
   if(running) return;
