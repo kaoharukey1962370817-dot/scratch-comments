@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（真・最終版）</title>
+<title>会話タイムマシン（最終安定版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -51,7 +51,7 @@ input {
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（真・最終版）</h2>
+<h2>⏳ 会話タイムマシン（最終安定版）</h2>
 
 <div id="control">
 
@@ -163,8 +163,18 @@ function showComment(c){
   }
 }
 
-// 🚀 修正版：時間ジャンプ
-function jumpToTime(){
+// 🚀 修正版：時間ジャンプ（完全対応）
+async function jumpToTime(){
+
+  // 👇 データ未読み込み対策（超重要）
+  if(data.length === 0){
+    await loadData();
+  }
+
+  if(data.length === 0){
+    alert("データ読み込み失敗");
+    return;
+  }
 
   const input = document.getElementById("startTimeInput").value;
   const target = new Date(input).getTime();
@@ -191,7 +201,7 @@ function jumpToTime(){
   seekEl.value = percent;
   document.getElementById("seekVal").innerText = percent + "%";
 
-  // 👇 強制再起動
+  // 強制再起動
   running = false;
 
   setTimeout(() => {
