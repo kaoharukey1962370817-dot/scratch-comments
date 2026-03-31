@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（ログコピー付き最小完全版）</title>
+<title>会話タイムマシン（完全修正版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -64,7 +64,7 @@ input {
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン</h2>
+<h2>⏳ 会話タイムマシン（完全修正版）</h2>
 
 <div id="control">
 
@@ -109,6 +109,9 @@ let startTime = 0;
 let baseTime = 0;
 let index = 0;
 
+// 🔥 追加：ズレ防止用
+let forcedIndex = null;
+
 const list = document.getElementById("list");
 const speedEl = document.getElementById("speed");
 const seekEl = document.getElementById("seek");
@@ -120,6 +123,7 @@ function log(msg){
   d.scrollTop = d.scrollHeight;
 }
 
+// ログコピー
 function copyLog(){
   const text = document.getElementById("debug").innerText;
   navigator.clipboard.writeText(text);
@@ -236,6 +240,9 @@ async function jumpToTime(){
 
   log("選ばれた: " + new Date(data[closestIndex].datetime_created));
 
+  // 🔥 ここが重要（ズレ防止）
+  forcedIndex = closestIndex;
+
   const percent = Math.floor((closestIndex / data.length) * 100);
   seekEl.value = percent;
   document.getElementById("seekVal").innerText = percent + "%";
@@ -260,7 +267,16 @@ async function start(){
   list.innerHTML = "";
   Object.keys(commentMap).forEach(k => delete commentMap[k]);
 
-  const seekIndex = Math.floor((seekEl.value / 100) * data.length);
+  let seekIndex;
+
+  // 🔥 ここがズレ防止の核心
+  if(forcedIndex !== null){
+    seekIndex = forcedIndex;
+    forcedIndex = null;
+  } else {
+    seekIndex = Math.floor((seekEl.value / 100) * data.length);
+  }
+
   baseTime = new Date(data[seekIndex].datetime_created).getTime();
 
   startTime = Date.now();
