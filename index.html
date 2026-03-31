@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（最終完成版）</title>
+<title>会話タイムマシン（返信対応 完全版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -51,7 +51,7 @@ input {
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン</h2>
+<h2>⏳ 会話タイムマシン（返信対応）</h2>
 
 <div id="control">
 
@@ -128,9 +128,11 @@ window.addEventListener("scroll", () => {
   autoScroll = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
 });
 
-const commentMap = {};
+// 🔥 ID→コメント内容の辞書（返信元表示用）
+const commentLookup = {};
 
 function showComment(c){
+
   const div = document.createElement("div");
   div.className = "comment";
 
@@ -140,19 +142,28 @@ function showComment(c){
 
   const exact = new Date(c.datetime_created).toLocaleString();
 
+  // 🔥 返信元の情報
+  let replyInfo = "";
+
+  if(c.parent_id && commentLookup[c.parent_id]){
+    const parent = commentLookup[c.parent_id];
+    replyInfo = `
+<div style="color:#555;font-size:12px;">
+↪ ${parent.author.username}: ${parent.content.slice(0,30)}
+</div>`;
+  }
+
   div.innerHTML = `
 <b>${c.author.username}</b>
+${replyInfo}
 <div class="time">${timeAgo(c.datetime_created)} / ${exact}</div>
 <div>${c.content}</div>
 `;
 
-  commentMap[c.id] = div;
+  list.appendChild(div);
 
-  if(c.parent_id && commentMap[c.parent_id]){
-    commentMap[c.parent_id].appendChild(div);
-  } else {
-    list.appendChild(div);
-  }
+  // 🔥 登録（あとで返信参照できるように）
+  commentLookup[c.id] = c;
 
   if(autoScroll){
     window.scrollTo({ top: document.body.scrollHeight });
@@ -220,7 +231,7 @@ async function start(){
   }
 
   list.innerHTML = "";
-  Object.keys(commentMap).forEach(k => delete commentMap[k]);
+  Object.keys(commentLookup).forEach(k => delete commentLookup[k]);
 
   let seekIndex;
 
