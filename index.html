@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（完全版）</title>
+<title>会話タイムマシン（デバッグ版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -51,7 +51,7 @@ input {
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（返信完全対応）</h2>
+<h2>⏳ 会話タイムマシン（デバッグ版）</h2>
 
 <div id="control">
 
@@ -73,7 +73,6 @@ input {
 
 <button onclick="start()">▶</button>
 <button onclick="pause()">⏸</button>
-<button onclick="scrollBottom()">↓</button>
 
 </div>
 
@@ -96,7 +95,7 @@ const list = document.getElementById("list");
 const speedEl = document.getElementById("speed");
 const seekEl = document.getElementById("seek");
 
-// 🔥 全コメント辞書（最重要）
+// 🔥 全コメント辞書
 const commentLookup = {};
 
 speedEl.oninput = () => {
@@ -107,6 +106,38 @@ seekEl.oninput = () => {
   document.getElementById("seekVal").innerText = seekEl.value + "%";
 };
 
+async function loadData(){
+  const res = await fetch("comments.json");
+  data = await res.json();
+
+  data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
+
+  data.forEach(c => {
+    commentLookup[c.id] = c;
+  });
+
+  // 🔥 デバッグ出力
+  console.log("=== データ確認 ===");
+  console.log("最初:", data[0]);
+  console.log("2番目:", data[1]);
+  console.log("3番目:", data[2]);
+
+  const replySample = data.find(c => c.parent_id !== null);
+  console.log("返信サンプル:", replySample);
+
+  if(!replySample){
+    console.warn("⚠️ 返信データが存在しない（script.pyの問題）");
+  } else {
+    console.log("親ID:", replySample.parent_id);
+    console.log("親データ:", commentLookup[replySample.parent_id]);
+  }
+}
+
+let autoScroll = true;
+window.addEventListener("scroll", () => {
+  autoScroll = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
+});
+
 function timeAgo(dateString){
   const now = new Date();
   const past = new Date(dateString);
@@ -115,27 +146,8 @@ function timeAgo(dateString){
   if(diff < 60) return Math.floor(diff) + "秒前";
   if(diff < 3600) return Math.floor(diff/60) + "分前";
   if(diff < 86400) return Math.floor(diff/3600) + "時間前";
-  if(diff < 2592000) return Math.floor(diff/86400) + "日前";
-  if(diff < 31536000) return Math.floor(diff/2592000) + "ヶ月前";
-  return Math.floor(diff/31536000) + "年前";
+  return Math.floor(diff/86400) + "日前";
 }
-
-async function loadData(){
-  const res = await fetch("comments.json");
-  data = await res.json();
-
-  data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
-
-  // 🔥 先に全部登録（これが超重要）
-  data.forEach(c => {
-    commentLookup[c.id] = c;
-  });
-}
-
-let autoScroll = true;
-window.addEventListener("scroll", () => {
-  autoScroll = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
-});
 
 function showComment(c){
 
@@ -150,7 +162,6 @@ function showComment(c){
 
   let replyInfo = "";
 
-  // 🔥 親を確実に参照できる
   if(c.parent_id && commentLookup[c.parent_id]){
     const parent = commentLookup[c.parent_id];
 
@@ -174,56 +185,6 @@ ${replyInfo}
   }
 }
 
-async function jumpToTime(){
-
-  if(data.length === 0){
-    await loadData();
-  }
-
-  const input = document.getElementById("startTimeInput").value;
-  const target = new Date(input).getTime();
-
-  if(isNaN(target)){
-    alert("形式は YYYY/MM/DD HH:MM:SS");
-    return;
-  }
-
-  let closestIndex = data.length - 1;
-
-  for(let i = 0; i < data.length; i++){
-    let t = new Date(data[i].datetime_created).getTime();
-
-    if(t >= target){
-
-      if(i > 0){
-        let prev = new Date(data[i-1].datetime_created).getTime();
-
-        if(Math.abs(prev - target) < Math.abs(t - target)){
-          closestIndex = i - 1;
-        } else {
-          closestIndex = i;
-        }
-      } else {
-        closestIndex = i;
-      }
-
-      break;
-    }
-  }
-
-  forcedIndex = closestIndex;
-
-  const percent = Math.floor((closestIndex / data.length) * 100);
-  seekEl.value = percent;
-  document.getElementById("seekVal").innerText = percent + "%";
-
-  running = false;
-
-  setTimeout(() => {
-    start();
-  }, 50);
-}
-
 async function start(){
 
   if(running) return;
@@ -236,17 +197,8 @@ async function start(){
 
   list.innerHTML = "";
 
-  let seekIndex;
-
-  if(forcedIndex !== null){
-    seekIndex = forcedIndex;
-    forcedIndex = null;
-  } else {
-    seekIndex = Math.floor((seekEl.value / 100) * data.length);
-  }
-
-  baseTime = new Date(data[seekIndex].datetime_created).getTime();
-  index = seekIndex;
+  index = 0;
+  baseTime = new Date(data[0].datetime_created).getTime();
 
   virtualTime = 0;
   lastFrameTime = performance.now();
@@ -264,8 +216,7 @@ async function start(){
     let delta = now - lastFrameTime;
     lastFrameTime = now;
 
-    let speed = speedEl.value;
-    virtualTime += delta * speed;
+    virtualTime += delta * speedEl.value;
 
     if(index < data.length){
 
@@ -287,11 +238,6 @@ async function start(){
 
 function pause(){
   paused = !paused;
-}
-
-function scrollBottom(){
-  window.scrollTo({ top: document.body.scrollHeight });
-  autoScroll = true;
 }
 
 </script>
