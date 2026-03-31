@@ -2,50 +2,70 @@ import requests
 import json
 import time
 
-studio_id = "51471940"
-
-def fetch_comments(offset):
-    url = f"https://api.scratch.mit.edu/studios/{studio_id}/comments"
-    params = {"limit": 40, "offset": offset}
-    headers = {"User-Agent": "Mozilla/5.0"}
-
-    for attempt in range(5):  # 👈 リトライ最大5回
-        res = requests.get(url, params=params, headers=headers)
-
-        if res.status_code == 200:
-            return res.json()
-
-        elif res.status_code == 429:
-            print("⚠️ 429 制限 → 待機")
-            time.sleep(5)
-
-        else:
-            print("エラー:", res.status_code)
-            time.sleep(2)
-
-    return []
+# 🔧 ここにスタジオIDを入れる
+STUDIO_ID = "51471940"
 
 all_comments = []
+
 offset = 0
+limit = 40
 
-print("🚀 一発取得開始")
+def fetch_comments():
+    global offset
 
-while True:
-    data = fetch_comments(offset)
-    if not data:
-        break
+    while True:
+        url = f"https://api.scratch.mit.edu/studios/{STUDIO_ID}/comments?limit={limit}&offset={offset}"
+        
+        print(f"取得中 offset={offset}")
+        
+        res = requests.get(url)
 
-    all_comments.extend(data)
-    offset += 40
+        if res.status_code != 200:
+            print("エラー:", res.status_code)
+            break
 
-    print("取得:", offset)
+        comments = res.json()
 
-    # 👇 少し余裕持たせる（成功率UP）
-    time.sleep(0.2)
+        if not comments:
+            print("全件取得完了")
+            break
 
-print("保存中...")
+        for c in comments:
+            add_comment(c)
+            fetch_replies(c)
 
-with open("comments.json", "w", encoding="utf-8") as f:
-    json.dump(all_comments, f, ensure_ascii=False)
+        offset += limit
+        time.sleep(0.5)  # API制限対策
 
-print("✅ 完了:", len(all_comments))
+def add_comment(c, parent_id=None):
+    all_comments.append({
+        "id": c.get("id"),
+        "content": c.get("content"),
+        "datetime_created": c.get("datetime_created"),
+        "author": c.get("author"),
+        "parent_id": parent_id
+    })
+
+def fetch_replies(comment):
+    # 🔥 repliesがある場合
+    if "replies" in comment and comment["replies"]:
+        for r in comment["replies"]:
+            add_comment(r, parent_id=comment["id"])
+
+            # 🔥 もし将来ネストが増えても対応（安全設計）
+            if "replies" in r and r["replies"]:
+                fetch_replies(r)
+
+def main():
+    fetch_comments()
+
+    # 🔥 時間順ソート（超重要）
+    all_comments.sort(key=lambda x: x["datetime_created"])
+
+    with open("comments.json", "w", encoding="utf-8") as f:
+        json.dump(all_comments, f, ensure_ascii=False, indent=2)
+
+    print(f"保存完了: {len(all_comments)}件")
+
+if __name__ == "__main__":
+    main()
