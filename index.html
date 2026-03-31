@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（完成版）</title>
+<title>会話タイムマシン（最終完成版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -247,7 +247,10 @@ async function start(){
     let speed = speedEl.value;
     let elapsed = (Date.now() - startTime) * speed;
 
-    while(index < data.length){
+    // 🔥 カクつき防止（処理制限）
+    let count = 0;
+
+    while(index < data.length && count < 20){
 
       let t = new Date(data[index].datetime_created).getTime();
       let rel = t - baseTime;
@@ -257,8 +260,7 @@ async function start(){
       showComment(data[index]);
       index++;
 
-      seekEl.value = Math.floor((index / data.length) * 100);
-      document.getElementById("seekVal").innerText = seekEl.value + "%";
+      count++;
     }
 
     requestAnimationFrame(loop);
