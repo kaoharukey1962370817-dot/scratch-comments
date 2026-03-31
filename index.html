@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（完全修正版）</title>
+<title>会話タイムマシン（完成版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -47,24 +47,11 @@ input {
   width: 100%;
   margin-top: 5px;
 }
-
-#debug {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 150px;
-  background: #000;
-  color: #0f0;
-  font-size: 12px;
-  overflow: auto;
-  padding: 5px;
-}
 </style>
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（完全修正版）</h2>
+<h2>⏳ 会話タイムマシン</h2>
 
 <div id="control">
 
@@ -81,7 +68,7 @@ input {
 <hr>
 
 <div>開始時間</div>
-<input type="text" id="startTimeInput" placeholder="2026/3/28 19:44:13">
+<input type="text" id="startTimeInput" placeholder="YYYY/MM/DD HH:MM:SS">
 <button onclick="jumpToTime()">時間ジャンプ</button>
 
 <button onclick="start()">▶</button>
@@ -92,13 +79,6 @@ input {
 
 <div id="list"></div>
 
-<!-- ログコピー -->
-<button onclick="copyLog()" style="position:fixed; bottom:160px; left:0; width:100%;">
-📋 ログコピー
-</button>
-
-<pre id="debug"></pre>
-
 <script>
 
 let data = [];
@@ -108,26 +88,11 @@ let paused = false;
 let startTime = 0;
 let baseTime = 0;
 let index = 0;
-
-// 🔥 追加：ズレ防止用
 let forcedIndex = null;
 
 const list = document.getElementById("list");
 const speedEl = document.getElementById("speed");
 const seekEl = document.getElementById("seek");
-
-function log(msg){
-  console.log(msg);
-  const d = document.getElementById("debug");
-  d.textContent += msg + "\n";
-  d.scrollTop = d.scrollHeight;
-}
-
-// ログコピー
-function copyLog(){
-  const text = document.getElementById("debug").innerText;
-  navigator.clipboard.writeText(text);
-}
 
 speedEl.oninput = () => {
   document.getElementById("speedVal").innerText = speedEl.value + "x";
@@ -151,13 +116,10 @@ function timeAgo(dateString){
 }
 
 async function loadData(){
-  log("データ読み込み中...");
   const res = await fetch("comments.json");
   data = await res.json();
 
   data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
-
-  log("読み込み完了: " + data.length + "件");
 }
 
 let autoScroll = true;
@@ -206,12 +168,9 @@ async function jumpToTime(){
   const target = new Date(input).getTime();
 
   if(isNaN(target)){
-    alert("時間の形式が違う");
+    alert("形式は YYYY/MM/DD HH:MM:SS");
     return;
   }
-
-  log("=== ジャンプ開始 ===");
-  log("入力時間: " + new Date(target));
 
   let closestIndex = data.length - 1;
 
@@ -222,8 +181,6 @@ async function jumpToTime(){
 
       if(i > 0){
         let prev = new Date(data[i-1].datetime_created).getTime();
-
-        log("候補: " + new Date(prev) + " / " + new Date(t));
 
         if(Math.abs(prev - target) < Math.abs(t - target)){
           closestIndex = i - 1;
@@ -238,9 +195,6 @@ async function jumpToTime(){
     }
   }
 
-  log("選ばれた: " + new Date(data[closestIndex].datetime_created));
-
-  // 🔥 ここが重要（ズレ防止）
   forcedIndex = closestIndex;
 
   const percent = Math.floor((closestIndex / data.length) * 100);
@@ -269,7 +223,6 @@ async function start(){
 
   let seekIndex;
 
-  // 🔥 ここがズレ防止の核心
   if(forcedIndex !== null){
     seekIndex = forcedIndex;
     forcedIndex = null;
