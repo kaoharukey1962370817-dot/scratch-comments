@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（完全時間再現版）</title>
+<title>会話タイムマシン（最終完成版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -51,7 +51,7 @@ input {
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（完全時間再現版）</h2>
+<h2>⏳ 会話タイムマシン</h2>
 
 <div id="control">
 
@@ -89,7 +89,7 @@ let baseTime = 0;
 let index = 0;
 let forcedIndex = null;
 
-// 🔥 追加：高精度時間
+// 高精度時間
 let virtualTime = 0;
 let lastFrameTime = 0;
 
@@ -233,10 +233,8 @@ async function start(){
   }
 
   baseTime = new Date(data[seekIndex].datetime_created).getTime();
-
   index = seekIndex;
 
-  // 🔥 初期化
   virtualTime = 0;
   lastFrameTime = performance.now();
 
@@ -249,7 +247,6 @@ async function start(){
       return;
     }
 
-    // 🔥 高精度時間更新
     let now = performance.now();
     let delta = now - lastFrameTime;
     lastFrameTime = now;
@@ -257,19 +254,17 @@ async function start(){
     let speed = speedEl.value;
     virtualTime += delta * speed;
 
-    let count = 0;
-
-    while(index < data.length && count < 20){
+    // ⭐ 1件ずつ表示
+    if(index < data.length){
 
       let t = new Date(data[index].datetime_created).getTime();
       let rel = t - baseTime;
 
-      if(rel > virtualTime) break;
+      if(rel <= virtualTime){
+        showComment(data[index]);
+        index++;
+      }
 
-      showComment(data[index]);
-      index++;
-
-      count++;
     }
 
     requestAnimationFrame(loop);
