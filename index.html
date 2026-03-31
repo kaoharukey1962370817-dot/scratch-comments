@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（最終完成版）</title>
+<title>会話タイムマシン（完全時間再現版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -51,7 +51,7 @@ input {
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン</h2>
+<h2>⏳ 会話タイムマシン（完全時間再現版）</h2>
 
 <div id="control">
 
@@ -85,10 +85,13 @@ let data = [];
 let running = false;
 let paused = false;
 
-let startTime = 0;
 let baseTime = 0;
 let index = 0;
 let forcedIndex = null;
+
+// 🔥 追加：高精度時間
+let virtualTime = 0;
+let lastFrameTime = 0;
 
 const list = document.getElementById("list");
 const speedEl = document.getElementById("speed");
@@ -118,7 +121,6 @@ function timeAgo(dateString){
 async function loadData(){
   const res = await fetch("comments.json");
   data = await res.json();
-
   data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
 }
 
@@ -232,8 +234,11 @@ async function start(){
 
   baseTime = new Date(data[seekIndex].datetime_created).getTime();
 
-  startTime = Date.now();
   index = seekIndex;
+
+  // 🔥 初期化
+  virtualTime = 0;
+  lastFrameTime = performance.now();
 
   function loop(){
 
@@ -244,10 +249,14 @@ async function start(){
       return;
     }
 
-    let speed = speedEl.value;
-    let elapsed = (Date.now() - startTime) * speed;
+    // 🔥 高精度時間更新
+    let now = performance.now();
+    let delta = now - lastFrameTime;
+    lastFrameTime = now;
 
-    // 🔥 カクつき防止（処理制限）
+    let speed = speedEl.value;
+    virtualTime += delta * speed;
+
     let count = 0;
 
     while(index < data.length && count < 20){
@@ -255,7 +264,7 @@ async function start(){
       let t = new Date(data[index].datetime_created).getTime();
       let rel = t - baseTime;
 
-      if(rel > elapsed) break;
+      if(rel > virtualTime) break;
 
       showComment(data[index]);
       index++;
@@ -271,10 +280,6 @@ async function start(){
 
 function pause(){
   paused = !paused;
-
-  if(!paused){
-    startTime = Date.now() - (new Date(data[index]?.datetime_created).getTime() - baseTime) / speedEl.value;
-  }
 }
 
 function scrollBottom(){
