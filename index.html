@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（返信対応 完全版）</title>
+<title>会話タイムマシン（完全版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -51,7 +51,7 @@ input {
 </head>
 <body>
 
-<h2>⏳ 会話タイムマシン（返信対応）</h2>
+<h2>⏳ 会話タイムマシン（返信完全対応）</h2>
 
 <div id="control">
 
@@ -96,6 +96,9 @@ const list = document.getElementById("list");
 const speedEl = document.getElementById("speed");
 const seekEl = document.getElementById("seek");
 
+// 🔥 全コメント辞書（最重要）
+const commentLookup = {};
+
 speedEl.oninput = () => {
   document.getElementById("speedVal").innerText = speedEl.value + "x";
 };
@@ -120,16 +123,19 @@ function timeAgo(dateString){
 async function loadData(){
   const res = await fetch("comments.json");
   data = await res.json();
+
   data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
+
+  // 🔥 先に全部登録（これが超重要）
+  data.forEach(c => {
+    commentLookup[c.id] = c;
+  });
 }
 
 let autoScroll = true;
 window.addEventListener("scroll", () => {
   autoScroll = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
 });
-
-// 🔥 ID→コメント内容の辞書（返信元表示用）
-const commentLookup = {};
 
 function showComment(c){
 
@@ -142,11 +148,12 @@ function showComment(c){
 
   const exact = new Date(c.datetime_created).toLocaleString();
 
-  // 🔥 返信元の情報
   let replyInfo = "";
 
+  // 🔥 親を確実に参照できる
   if(c.parent_id && commentLookup[c.parent_id]){
     const parent = commentLookup[c.parent_id];
+
     replyInfo = `
 <div style="color:#555;font-size:12px;">
 ↪ ${parent.author.username}: ${parent.content.slice(0,30)}
@@ -161,9 +168,6 @@ ${replyInfo}
 `;
 
   list.appendChild(div);
-
-  // 🔥 登録（あとで返信参照できるように）
-  commentLookup[c.id] = c;
 
   if(autoScroll){
     window.scrollTo({ top: document.body.scrollHeight });
@@ -231,7 +235,6 @@ async function start(){
   }
 
   list.innerHTML = "";
-  Object.keys(commentLookup).forEach(k => delete commentLookup[k]);
 
   let seekIndex;
 
