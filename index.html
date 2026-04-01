@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>会話タイムマシン（デバッグ版）</title>
+<title>会話タイムマシン（読み込みデバッグ完全版）</title>
 
 <style>
 body { font-family: sans-serif; margin-right: 160px; }
@@ -47,6 +47,20 @@ input {
   width: 100%;
   margin-top: 5px;
 }
+
+/* 🔥 デバッグ表示 */
+#debug {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  max-height: 150px;
+  overflow-y: auto;
+  background: black;
+  color: #0f0;
+  font-size: 12px;
+  padding: 5px;
+}
 </style>
 </head>
 <body>
@@ -59,56 +73,47 @@ input {
 <input type="range" id="speed" min="1" max="10000" value="1" class="vertical">
 <div id="speedVal">1x</div>
 
-<hr>
-
-<div>位置</div>
-<input type="range" id="seek" min="0" max="100" value="0" class="vertical">
-<div id="seekVal">0%</div>
-
-<hr>
-
-<div>開始時間</div>
-<input type="text" id="startTimeInput" placeholder="YYYY/MM/DD HH:MM:SS">
-<button onclick="jumpToTime()">時間ジャンプ</button>
-
 <button onclick="start()">▶</button>
-<button onclick="pause()">⏸</button>
 
 </div>
 
 <div id="list"></div>
 
+<!-- 🔥 デバッグ表示 -->
+<div id="debug"></div>
+
 <script>
 
+const debugEl = document.getElementById("debug");
+
+function log(msg){
+  console.log(msg);
+  debugEl.innerHTML += msg + "<br>";
+}
+
 let data = [];
-let running = false;
-let paused = false;
-
-let baseTime = 0;
-let index = 0;
-let forcedIndex = null;
-
-let virtualTime = 0;
-let lastFrameTime = 0;
-
-const list = document.getElementById("list");
-const speedEl = document.getElementById("speed");
-const seekEl = document.getElementById("seek");
-
-// 🔥 全コメント辞書
 const commentLookup = {};
 
-speedEl.oninput = () => {
-  document.getElementById("speedVal").innerText = speedEl.value + "x";
-};
-
-seekEl.oninput = () => {
-  document.getElementById("seekVal").innerText = seekEl.value + "%";
-};
-
 async function loadData(){
-  const res = await fetch("comments.json");
-  data = await res.json();
+
+  log("読み込み開始...");
+
+  try{
+    const res = await fetch("comments.json");
+
+    log("ステータス: " + res.status);
+
+    const text = await res.text();
+    log("データ先頭: " + text.slice(0,100));
+
+    data = JSON.parse(text);
+
+  }catch(e){
+    log("❌ エラー: " + e);
+    return;
+  }
+
+  log("件数: " + data.length);
 
   data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
 
@@ -116,37 +121,23 @@ async function loadData(){
     commentLookup[c.id] = c;
   });
 
-  // 🔥 デバッグ出力
-  console.log("=== データ確認 ===");
-  console.log("最初:", data[0]);
-  console.log("2番目:", data[1]);
-  console.log("3番目:", data[2]);
-
+  // 🔥 返信チェック
   const replySample = data.find(c => c.parent_id !== null);
-  console.log("返信サンプル:", replySample);
 
-  if(!replySample){
-    console.warn("⚠️ 返信データが存在しない（script.pyの問題）");
+  if(replySample){
+    log("返信あり: OK");
+    log("親ID: " + replySample.parent_id);
+
+    if(commentLookup[replySample.parent_id]){
+      log("親も存在: OK");
+    } else {
+      log("❌ 親が見つからない（IDズレ）");
+    }
+
   } else {
-    console.log("親ID:", replySample.parent_id);
-    console.log("親データ:", commentLookup[replySample.parent_id]);
+    log("❌ 返信が存在しない（script.pyの問題）");
   }
-}
 
-let autoScroll = true;
-window.addEventListener("scroll", () => {
-  autoScroll = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
-});
-
-function timeAgo(dateString){
-  const now = new Date();
-  const past = new Date(dateString);
-  const diff = (now - past) / 1000;
-
-  if(diff < 60) return Math.floor(diff) + "秒前";
-  if(diff < 3600) return Math.floor(diff/60) + "分前";
-  if(diff < 86400) return Math.floor(diff/3600) + "時間前";
-  return Math.floor(diff/86400) + "日前";
 }
 
 function showComment(c){
@@ -158,86 +149,38 @@ function showComment(c){
     div.classList.add("reply");
   }
 
-  const exact = new Date(c.datetime_created).toLocaleString();
-
   let replyInfo = "";
 
   if(c.parent_id && commentLookup[c.parent_id]){
     const parent = commentLookup[c.parent_id];
-
-    replyInfo = `
-<div style="color:#555;font-size:12px;">
-↪ ${parent.author.username}: ${parent.content.slice(0,30)}
-</div>`;
+    replyInfo = `↪ ${parent.author.username}: ${parent.content.slice(0,20)}<br>`;
   }
 
   div.innerHTML = `
-<b>${c.author.username}</b>
+<b>${c.author.username}</b><br>
 ${replyInfo}
-<div class="time">${timeAgo(c.datetime_created)} / ${exact}</div>
-<div>${c.content}</div>
+${c.content}
 `;
 
-  list.appendChild(div);
-
-  if(autoScroll){
-    window.scrollTo({ top: document.body.scrollHeight });
-  }
+  document.getElementById("list").appendChild(div);
 }
 
 async function start(){
 
-  if(running) return;
-  running = true;
-  paused = false;
+  await loadData();
 
   if(data.length === 0){
-    await loadData();
+    log("❌ データなし → ここで止まる");
+    return;
   }
 
-  list.innerHTML = "";
+  log("表示開始");
 
-  index = 0;
-  baseTime = new Date(data[0].datetime_created).getTime();
-
-  virtualTime = 0;
-  lastFrameTime = performance.now();
-
-  function loop(){
-
-    if(!running) return;
-
-    if(paused){
-      requestAnimationFrame(loop);
-      return;
-    }
-
-    let now = performance.now();
-    let delta = now - lastFrameTime;
-    lastFrameTime = now;
-
-    virtualTime += delta * speedEl.value;
-
-    if(index < data.length){
-
-      let t = new Date(data[index].datetime_created).getTime();
-      let rel = t - baseTime;
-
-      if(rel <= virtualTime){
-        showComment(data[index]);
-        index++;
-      }
-
-    }
-
-    requestAnimationFrame(loop);
+  // とりあえず最初の50件表示
+  for(let i = 0; i < Math.min(50, data.length); i++){
+    showComment(data[i]);
   }
 
-  loop();
-}
-
-function pause(){
-  paused = !paused;
 }
 
 </script>
