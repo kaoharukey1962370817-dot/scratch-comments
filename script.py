@@ -2,70 +2,71 @@ import requests
 import json
 import time
 
-# 🔧 ここにスタジオIDを入れる
-STUDIO_ID = "51471940"
+STUDIO_ID = "YOUR_STUDIO_ID"
 
 all_comments = []
 
 offset = 0
 limit = 40
 
-def fetch_comments():
-    global offset
+def fetch_replies(comment_id):
+    url = f"https://api.scratch.mit.edu/studios/{STUDIO_ID}/comments/{comment_id}/replies"
+    
+    res = requests.get(url)
+    
+    if res.status_code != 200:
+        return []
 
-    while True:
-        url = f"https://api.scratch.mit.edu/studios/{STUDIO_ID}/comments?limit={limit}&offset={offset}"
-        
-        print(f"取得中 offset={offset}")
-        
-        res = requests.get(url)
+    return res.json()
 
-        if res.status_code != 200:
-            print("エラー:", res.status_code)
-            break
+while True:
+    url = f"https://api.scratch.mit.edu/studios/{STUDIO_ID}/comments?limit={limit}&offset={offset}"
+    
+    print(f"取得中 offset={offset}")
+    
+    res = requests.get(url)
 
-        comments = res.json()
+    if res.status_code != 200:
+        print("エラー:", res.status_code)
+        break
 
-        if not comments:
-            print("全件取得完了")
-            break
+    comments = res.json()
 
-        for c in comments:
-            add_comment(c)
-            fetch_replies(c)
+    if not comments:
+        print("終了")
+        break
 
-        offset += limit
-        time.sleep(0.5)  # API制限対策
+    for c in comments:
+        # 親コメント
+        all_comments.append({
+            "id": c["id"],
+            "content": c["content"],
+            "datetime_created": c["datetime_created"],
+            "author": c["author"],
+            "parent_id": None
+        })
 
-def add_comment(c, parent_id=None):
-    all_comments.append({
-        "id": c.get("id"),
-        "content": c.get("content"),
-        "datetime_created": c.get("datetime_created"),
-        "author": c.get("author"),
-        "parent_id": parent_id
-    })
+        # 🔥 別APIで返信取得
+        replies = fetch_replies(c["id"])
 
-def fetch_replies(comment):
-    # 🔥 repliesがある場合
-    if "replies" in comment and comment["replies"]:
-        for r in comment["replies"]:
-            add_comment(r, parent_id=comment["id"])
+        for r in replies:
+            all_comments.append({
+                "id": r["id"],
+                "content": r["content"],
+                "datetime_created": r["datetime_created"],
+                "author": r["author"],
+                "parent_id": c["id"]
+            })
 
-            # 🔥 もし将来ネストが増えても対応（安全設計）
-            if "replies" in r and r["replies"]:
-                fetch_replies(r)
+        time.sleep(0.2)  # API優しさ
 
-def main():
-    fetch_comments()
+    offset += limit
+    time.sleep(0.5)
 
-    # 🔥 時間順ソート（超重要）
-    all_comments.sort(key=lambda x: x["datetime_created"])
+# 時間順
+all_comments.sort(key=lambda x: x["datetime_created"])
 
-    with open("comments.json", "w", encoding="utf-8") as f:
-        json.dump(all_comments, f, ensure_ascii=False, indent=2)
+with open("comments.json", "w", encoding="utf-8") as f:
+    json.dump(all_comments, f, ensure_ascii=False, indent=2)
 
-    print(f"保存完了: {len(all_comments)}件")
-
-if __name__ == "__main__":
-    main()
+print(f"保存完了: {len(all_comments)}件")
