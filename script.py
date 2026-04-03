@@ -11,9 +11,8 @@ limit = 40
 
 def fetch_replies(comment_id):
     url = f"https://api.scratch.mit.edu/studios/{STUDIO_ID}/comments/{comment_id}/replies"
-    
     res = requests.get(url)
-    
+
     if res.status_code != 200:
         return []
 
@@ -33,7 +32,7 @@ while True:
     comments = res.json()
 
     if not comments:
-        print("終了")
+        print("全件取得完了")
         break
 
     for c in comments:
@@ -46,7 +45,7 @@ while True:
             "parent_id": None
         })
 
-        # 🔥 別APIで返信取得
+        # 🔥 返信を別APIで取得
         replies = fetch_replies(c["id"])
 
         for r in replies:
@@ -58,7 +57,7 @@ while True:
                 "parent_id": c["id"]
             })
 
-        time.sleep(0.2)  # API優しさ
+        time.sleep(0.2)
 
     offset += limit
     time.sleep(0.5)
