@@ -1,13 +1,14 @@
-name: Fetch Comments (Full)
+name: Fetch Comments
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"  # 10分ごと（任意）
 
 jobs:
   run:
     runs-on: ubuntu-latest
-
-    timeout-minutes: 30  # 👈 制限延長（重要）
+    timeout-minutes: 30
 
     steps:
     - name: Checkout
@@ -28,6 +29,6 @@ jobs:
       run: |
         git config user.name "bot"
         git config user.email "bot@example.com"
-        git add comments.json
-        git commit -m "full update" || echo "no change"
+        git add comments.json progress.txt
+        git commit -m "update comments" || echo "no change"
         git push
