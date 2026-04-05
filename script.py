@@ -12,24 +12,18 @@ MAX_PER_RUN = 2000
 PROGRESS_FILE = "progress.txt"
 OUTPUT_FILE = "comments.json"
 
-# -----------------------
-# progress強制生成（超重要）
-# -----------------------
+# progress生成
 if not os.path.exists(PROGRESS_FILE):
     with open(PROGRESS_FILE, "w") as f:
         f.write("0")
 
-# -----------------------
-# 進行状況読み込み
-# -----------------------
+# 読み込み
 with open(PROGRESS_FILE, "r") as f:
     offset = int(f.read().strip())
 
 print(f"▶ 開始 offset={offset}")
 
-# -----------------------
 # 既存データ
-# -----------------------
 if os.path.exists(OUTPUT_FILE):
     with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
         all_comments = json.load(f)
@@ -38,33 +32,25 @@ else:
 
 existing_ids = set(c["id"] for c in all_comments)
 
-# -----------------------
-# 時間変換
-# -----------------------
+# 🔥 合計カウント
+total_count = len(all_comments)
+
 def convert_time(dt):
     return int(datetime.fromisoformat(dt.replace("Z", "+00:00")).timestamp())
 
-# -----------------------
-# 返信取得
-# -----------------------
 def fetch_replies(comment_id):
     url = f"https://api.scratch.mit.edu/studios/{STUDIO_ID}/comments/{comment_id}/replies"
     res = requests.get(url)
-
     if res.status_code != 200:
         return []
-
     return res.json()
 
-# -----------------------
-# メイン
-# -----------------------
 start_offset = offset
 
-while offset < start_offset + MAX_PER_RUN:
+while total_count < MAX_PER_RUN:
 
     url = f"https://api.scratch.mit.edu/studios/{STUDIO_ID}/comments?limit={LIMIT}&offset={offset}"
-    print(f"取得中 offset={offset}")
+    print(f"取得中 offset={offset} / total={total_count}")
 
     res = requests.get(url)
 
@@ -91,6 +77,11 @@ while offset < start_offset + MAX_PER_RUN:
                 "parent_id": None
             })
             existing_ids.add(c["id"])
+            total_count += 1
+
+        # 🔥 制限チェック
+        if total_count >= MAX_PER_RUN:
+            break
 
         # 返信
         replies = fetch_replies(c["id"])
@@ -105,21 +96,26 @@ while offset < start_offset + MAX_PER_RUN:
                     "parent_id": c["id"]
                 })
                 existing_ids.add(r["id"])
+                total_count += 1
+
+            if total_count >= MAX_PER_RUN:
+                break
+
+        if total_count >= MAX_PER_RUN:
+            break
 
         time.sleep(0.2)
 
     offset += LIMIT
 
-    # 🔥 必ず保存
+    # 保存
     with open(PROGRESS_FILE, "w") as f:
         f.write(str(offset))
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(all_comments, f, ensure_ascii=False)
 
-# -----------------------
 # ソート
-# -----------------------
 all_comments.sort(key=lambda x: x["time"])
 
 with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
