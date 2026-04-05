@@ -47,7 +47,7 @@ def fetch_replies(comment_id):
 
 start_offset = offset
 
-while total_count < MAX_PER_RUN:
+while offset < start_offset + MAX_PER_RUN:
 
     url = f"https://api.scratch.mit.edu/studios/{STUDIO_ID}/comments?limit={LIMIT}&offset={offset}"
     print(f"取得中 offset={offset} / total={total_count}")
