@@ -2,29 +2,33 @@ import requests
 import json
 import time
 import os
+from datetime import datetime
 
 STUDIO_ID = "51471940"
 
 LIMIT = 40
-MAX_PER_RUN = 2000  # ← 1回で進める量（調整OK）
+MAX_PER_RUN = 2000
 
-# 🔥 進行状況ファイル
 PROGRESS_FILE = "progress.txt"
 OUTPUT_FILE = "comments.json"
 
 # -----------------------
+# progress強制生成（超重要）
+# -----------------------
+if not os.path.exists(PROGRESS_FILE):
+    with open(PROGRESS_FILE, "w") as f:
+        f.write("0")
+
+# -----------------------
 # 進行状況読み込み
 # -----------------------
-if os.path.exists(PROGRESS_FILE):
-    with open(PROGRESS_FILE, "r") as f:
-        offset = int(f.read().strip())
-else:
-    offset = 0
+with open(PROGRESS_FILE, "r") as f:
+    offset = int(f.read().strip())
 
 print(f"▶ 開始 offset={offset}")
 
 # -----------------------
-# 既存データ読み込み
+# 既存データ
 # -----------------------
 if os.path.exists(OUTPUT_FILE):
     with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
@@ -32,8 +36,13 @@ if os.path.exists(OUTPUT_FILE):
 else:
     all_comments = []
 
-# 重複防止
 existing_ids = set(c["id"] for c in all_comments)
+
+# -----------------------
+# 時間変換
+# -----------------------
+def convert_time(dt):
+    return int(datetime.fromisoformat(dt.replace("Z", "+00:00")).timestamp())
 
 # -----------------------
 # 返信取得
@@ -48,14 +57,13 @@ def fetch_replies(comment_id):
     return res.json()
 
 # -----------------------
-# メインループ
+# メイン
 # -----------------------
 start_offset = offset
 
 while offset < start_offset + MAX_PER_RUN:
 
     url = f"https://api.scratch.mit.edu/studios/{STUDIO_ID}/comments?limit={LIMIT}&offset={offset}"
-    
     print(f"取得中 offset={offset}")
 
     res = requests.get(url)
@@ -68,7 +76,7 @@ while offset < start_offset + MAX_PER_RUN:
 
     if not comments:
         print("🎉 全件取得完了")
-        offset = 0  # リセット（次回用）
+        offset = 0
         break
 
     for c in comments:
@@ -77,32 +85,32 @@ while offset < start_offset + MAX_PER_RUN:
         if c["id"] not in existing_ids:
             all_comments.append({
                 "id": c["id"],
-                "content": c["content"],
-                "datetime_created": c["datetime_created"],
-                "author": c["author"],
+                "user": c["author"]["username"],
+                "text": c["content"],
+                "time": convert_time(c["datetime_created"]),
                 "parent_id": None
             })
             existing_ids.add(c["id"])
 
-        # 🔥 返信取得
+        # 返信
         replies = fetch_replies(c["id"])
 
         for r in replies:
             if r["id"] not in existing_ids:
                 all_comments.append({
                     "id": r["id"],
-                    "content": r["content"],
-                    "datetime_created": r["datetime_created"],
-                    "author": r["author"],
+                    "user": r["author"]["username"],
+                    "text": r["content"],
+                    "time": convert_time(r["datetime_created"]),
                     "parent_id": c["id"]
                 })
                 existing_ids.add(r["id"])
 
-        time.sleep(0.05)
+        time.sleep(0.2)
 
     offset += LIMIT
 
-    # 🔥 途中保存（超重要）
+    # 🔥 必ず保存
     with open(PROGRESS_FILE, "w") as f:
         f.write(str(offset))
 
@@ -110,9 +118,9 @@ while offset < start_offset + MAX_PER_RUN:
         json.dump(all_comments, f, ensure_ascii=False)
 
 # -----------------------
-# 最後にソート
+# ソート
 # -----------------------
-all_comments.sort(key=lambda x: x["datetime_created"])
+all_comments.sort(key=lambda x: x["time"])
 
 with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
     json.dump(all_comments, f, ensure_ascii=False, indent=2)
