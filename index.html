@@ -42,11 +42,6 @@ button {
   color: gray;
   font-size: 12px;
 }
-
-input {
-  width: 100%;
-  margin-top: 5px;
-}
 </style>
 </head>
 <body>
@@ -54,140 +49,84 @@ input {
 <h2>⏳ 会話タイムマシン（返信完全対応）</h2>
 
 <div id="control">
-
 <div>速度</div>
 <input type="range" id="speed" min="1" max="10000" value="1" class="vertical">
 <div id="speedVal">1x</div>
 
 <hr>
 
-<button onclick="start()">▶</button>
-<button onclick="pause()">⏸</button>
-
+<button onclick="start()">▶ 再生</button>
+<button onclick="stop()">⏸ 停止</button>
+<button onclick="reset()">🔄 リセット</button>
 </div>
 
-<div id="list"></div>
+<div id="comments"></div>
 
 <script>
-
-let data = [];
-let running = false;
-let paused = false;
-
-let baseTime = 0;
+let comments = [];
 let index = 0;
+let timer = null;
+let commentMap = {};
 
-let virtualTime = 0;
-let lastFrameTime = 0;
-
-const list = document.getElementById("list");
-const speedEl = document.getElementById("speed");
-
-// 🔥 全コメント辞書
-const commentLookup = {};
-
-speedEl.oninput = () => {
-  document.getElementById("speedVal").innerText = speedEl.value + "x";
-};
-
-async function loadData(){
+async function load() {
   const res = await fetch("comments.json");
-  data = await res.json();
-
-  data.sort((a,b) => new Date(a.datetime_created) - new Date(b.datetime_created));
-
-  data.forEach(c => {
-    commentLookup[c.id] = c;
-  });
+  comments = await res.json();
+  comments.sort((a, b) => a.time - b.time);
 }
 
-function showComment(c){
-
+function renderComment(c) {
   const div = document.createElement("div");
   div.className = "comment";
 
-  if(c.parent_id){
-    div.classList.add("reply");
-  }
-
-  const exact = new Date(c.datetime_created).toLocaleString();
-
-  let replyInfo = "";
-
-  if(c.parent_id && commentLookup[c.parent_id]){
-    const parent = commentLookup[c.parent_id];
-
-    replyInfo = `
-<div style="color:#555;font-size:12px;">
-↪ ${parent.author.username}: ${parent.content.slice(0,30)}
-</div>`;
-  }
+  if (c.parent_id) div.classList.add("reply");
 
   div.innerHTML = `
-<b>${c.author.username}</b>
-${replyInfo}
-<div class="time">${exact}</div>
-<div>${c.content}</div>
-`;
+    <b>${c.user}</b>: ${c.text}
+    <div class="time">${new Date(c.time * 1000).toLocaleString()}</div>
+  `;
 
-  list.appendChild(div);
+  commentMap[c.id] = div;
+
+  if (c.parent_id && commentMap[c.parent_id]) {
+    commentMap[c.parent_id].appendChild(div);
+  } else {
+    document.getElementById("comments").appendChild(div);
+  }
 }
 
-async function start(){
+function start() {
+  if (timer) return;
 
-  if(running) return;
-  running = true;
-  paused = false;
+  const speed = document.getElementById("speed").value;
 
-  if(data.length === 0){
-    await loadData();
-  }
-
-  list.innerHTML = "";
-
-  index = 0;
-  baseTime = new Date(data[0].datetime_created).getTime();
-
-  virtualTime = 0;
-  lastFrameTime = performance.now();
-
-  function loop(){
-
-    if(!running) return;
-
-    if(paused){
-      requestAnimationFrame(loop);
+  timer = setInterval(() => {
+    if (index >= comments.length) {
+      stop();
       return;
     }
 
-    let now = performance.now();
-    let delta = now - lastFrameTime;
-    lastFrameTime = now;
-
-    virtualTime += delta * speedEl.value;
-
-    if(index < data.length){
-
-      let t = new Date(data[index].datetime_created).getTime();
-      let rel = t - baseTime;
-
-      if(rel <= virtualTime){
-        showComment(data[index]);
-        index++;
-      }
-
-    }
-
-    requestAnimationFrame(loop);
-  }
-
-  loop();
+    renderComment(comments[index]);
+    index++;
+  }, 1000 / speed);
 }
 
-function pause(){
-  paused = !paused;
+function stop() {
+  clearInterval(timer);
+  timer = null;
 }
 
+function reset() {
+  stop();
+  index = 0;
+  document.getElementById("comments").innerHTML = "";
+  commentMap = {};
+}
+
+document.getElementById("speed").addEventListener("input", e => {
+  document.getElementById("speedVal").innerText = e.target.value + "x";
+});
+
+load();
 </script>
 
 </body>
