@@ -2,7 +2,7 @@ import requests
 import json
 import time
 
-STUDIO_ID = "YOUR_STUDIO_ID"
+STUDIO_ID = "51471940"
 
 all_comments = []
 
