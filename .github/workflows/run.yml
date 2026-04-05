@@ -22,8 +22,8 @@ jobs:
     - name: Install requests
       run: pip install requests
 
-    # 🔥 リセット（毎回やりたいなら有効）
-    - name: Reset files (optional)
+    # 🔥 ここがリセット（1回だけ使う）
+    - name: Reset (ONE TIME)
       run: |
         echo "[]" > comments.json
         echo "0" > progress.txt
@@ -36,5 +36,5 @@ jobs:
         git config user.name "bot"
         git config user.email "bot@example.com"
         git add comments.json progress.txt
-        git commit -m "update comments" || echo "no change"
+        git commit -m "reset + update" || echo "no change"
         git push
