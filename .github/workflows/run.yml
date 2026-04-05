@@ -3,7 +3,7 @@ name: Fetch Comments
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/10 * * * *"  # 10分ごと（任意）
+    - cron: "*/10 * * * *"
 
 jobs:
   run:
@@ -21,6 +21,12 @@ jobs:
 
     - name: Install requests
       run: pip install requests
+
+    # 🔥 リセット（毎回やりたいなら有効）
+    - name: Reset files (optional)
+      run: |
+        echo "[]" > comments.json
+        echo "0" > progress.txt
 
     - name: Run script
       run: python script.py
