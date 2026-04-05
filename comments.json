@@ -1,31 +1,10 @@
 [
   {
-    "id": 320164452,
-    "user": "hondakai",
-    "text": "本当に喧嘩腰ですみませんでした。",
-    "time": 1775307324,
-    "parent_id": null
-  },
-  {
-    "id": 320164465,
-    "user": "hondakai",
-    "text": "お許しください",
-    "time": 1775307334,
-    "parent_id": null
-  },
-  {
     "id": 320164473,
     "user": "_cix",
     "text": "これでもスクラ歴4年あるはずです",
     "time": 1775307340,
     "parent_id": null
-  },
-  {
-    "id": 320164482,
-    "user": "MILKBLOODSHAKE",
-    "text": "なんかやっちゃったの？",
-    "time": 1775307350,
-    "parent_id": 320164465
   },
   {
     "id": 320164487,
@@ -84,13 +63,6 @@
     "parent_id": null
   },
   {
-    "id": 320164593,
-    "user": "hondakai",
-    "text": "変に突っ込んじゃった",
-    "time": 1775307463,
-    "parent_id": 320164465
-  },
-  {
     "id": 320164621,
     "user": "hondakai",
     "text": "大切にしよう。",
@@ -110,13 +82,6 @@
     "text": "まじで暖かい場所になってほしい",
     "time": 1775307505,
     "parent_id": null
-  },
-  {
-    "id": 320164656,
-    "user": "MILKBLOODSHAKE",
-    "text": "ああ&hellip;",
-    "time": 1775307525,
-    "parent_id": 320164465
   },
   {
     "id": 320164669,
@@ -13998,5 +13963,40 @@
     "text": "@abee",
     "time": 1775398863,
     "parent_id": null
+  },
+  {
+    "id": 320252391,
+    "user": "remamesan2",
+    "text": "雑談所って夜こんなに過疎ってるんだ",
+    "time": 1775399311,
+    "parent_id": null
+  },
+  {
+    "id": 320252473,
+    "user": "kk1301__sub",
+    "text": "今日は特にね",
+    "time": 1775399378,
+    "parent_id": 320252391
+  },
+  {
+    "id": 320252483,
+    "user": "tx4n",
+    "text": "11時過ぎたら最近過疎るようになってきた",
+    "time": 1775399383,
+    "parent_id": 320252391
+  },
+  {
+    "id": 320252695,
+    "user": "umeboshi_niki",
+    "text": "お風呂から帰還してきた",
+    "time": 1775399545,
+    "parent_id": null
+  },
+  {
+    "id": 320253037,
+    "user": "umeboshi_niki",
+    "text": "スタジオ移転とかあったからね\n",
+    "time": 1775399790,
+    "parent_id": 320252391
   }
 ]
