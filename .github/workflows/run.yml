@@ -1,30 +1,33 @@
-name: Fetch Comments
+name: Fetch Comments (Full)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/10 * * * *"
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+
+    timeout-minutes: 30  # 👈 制限延長（重要）
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v3
 
-    - uses: actions/setup-python@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
       with:
         python-version: "3.x"
 
-    - run: pip install requests
+    - name: Install requests
+      run: pip install requests
 
-    - run: python script.py
+    - name: Run script
+      run: python script.py
 
     - name: Commit & Push
       run: |
         git config user.name "bot"
         git config user.email "bot@example.com"
-        git add comments.json progress.txt
-        git commit -m "update comments" || echo "no change"
+        git add comments.json
+        git commit -m "full update" || echo "no change"
         git push
